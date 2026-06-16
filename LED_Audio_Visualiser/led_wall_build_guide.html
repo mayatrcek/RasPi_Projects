@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPi LED Wall — Build Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #060b14;
+  --surface:  #0d1520;
+  --surface2: #131e2d;
+  --border:   #1a2a3a;
+  --accent:   #00e5cc;
+  --pink:     #ff3d7f;
+  --purple:   #c084fc;
+  --text:     #e2eefa;
+  --muted:    #8ab0c8;
+  --codebg:   #040a10;
+  --green:    #00ff88;
+  --yellow:   #ffd700;
+  --orange:   #ff8833;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+}
+/* ── Header ── */
+.header {
+  padding: 28px 24px 22px;
+  background: linear-gradient(160deg, #0a1525 0%, var(--bg) 100%);
+  border-bottom: 1px solid var(--border);
+  position: relative; overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 15% 60%, #00e5cc0a, transparent 55%),
+              radial-gradient(ellipse at 85% 40%, #ff3d7f06, transparent 55%);
+}
+.header-inner { position: relative; }
+.header h1 {
+  font-family: 'Space Mono', monospace;
+  font-size: 1.1rem; color: var(--accent);
+  letter-spacing: 1px;
+}
+.header p { font-size: 0.8rem; color: var(--muted); margin-top: 5px; }
+.tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.tag {
+  font-family: 'Space Mono', monospace; font-size: 0.65rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 3px 10px; border-radius: 3px;
+}
+.tag.c { background:#00e5cc12; color:var(--accent); border:1px solid #00e5cc28; }
+.tag.g { background:#00ff8812; color:var(--green);  border:1px solid #00ff8828; }
+.tag.p { background:#ff3d7f12; color:var(--pink);   border:1px solid #ff3d7f28; }
+.tag.y { background:#ffd70012; color:var(--yellow); border:1px solid #ffd70028; }
+/* ── Tabs ── */
+.tabs {
+  display: flex; overflow-x: auto; scrollbar-width: none;
+  padding: 0 18px; border-bottom: 1px solid var(--border);
+  background: #080e18;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  font-family: 'Space Mono', monospace; font-size: 0.68rem;
+  padding: 13px 18px; cursor: pointer; white-space: nowrap;
+  color: var(--muted); border-bottom: 2px solid transparent;
+  letter-spacing: 0.3px; transition: all 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+/* ── Content ── */
+.panel { display: none; padding: 24px 22px 40px; max-width: 860px; }
+.panel.active { display: block; }
+/* ── Section titles ── */
+.sec {
+  font-family: 'Space Mono', monospace; font-size: 0.68rem;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--accent);
+  display: flex; align-items: center; gap: 10px;
+  margin: 24px 0 14px;
+}
+.sec:first-child { margin-top: 0; }
+.sec::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--border),transparent); }
+/* ── Table ── */
+table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+th {
+  font-family: 'Space Mono', monospace; font-size: 0.62rem;
+  text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted);
+  padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
+}
+td { padding: 10px 12px; border-bottom: 1px solid #0d1828; vertical-align: top; }
+tr:hover td { background: #0c1824; }
+.item { color: var(--text); font-weight: 500; }
+.qty { font-family: 'Space Mono', monospace; color: var(--accent); white-space: nowrap; }
+.note { color: var(--muted); font-size: 0.82rem; }
+.etag {
+  display: inline; font-size: 0.6rem; font-weight: 700;
+  font-family: 'Space Mono', monospace; text-transform: uppercase;
+  padding: 1px 5px; border-radius: 2px; margin-left: 5px;
+  vertical-align: middle;
+}
+.etag.e { background:#00e5cc12; color:var(--accent); border:1px solid #00e5cc25; }
+.etag.o { background:#ffd70012; color:var(--yellow); border:1px solid #ffd70025; }
+/* ── Info boxes ── */
+.info {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0; padding: 12px 14px; margin: 14px 0;
+  font-size: 0.8rem;
+}
+.info.warn { border-left-color: var(--orange); }
+.info.tip  { border-left-color: var(--purple); }
+.info .lbl {
+  font-family: 'Space Mono', monospace; font-size: 0.63rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--accent); margin-bottom: 4px;
+}
+.info.warn .lbl { color: var(--orange); }
+.info.tip  .lbl { color: var(--purple); }
+/* ── Code ── */
+.code {
+  background: var(--codebg); border: 1px solid #0f1f30;
+  border-radius: 6px; padding: 16px 18px;
+  font-family: 'Space Mono', monospace; font-size: 0.68rem;
+  line-height: 1.75; overflow-x: auto; margin: 10px 0;
+  color: #9ab8cc;
+}
+.cm  { color: #5a8aaa; }
+.kw  { color: #c084fc; }
+.fn  { color: #67e8f9; }
+.st  { color: #86efac; }
+.nm  { color: #fca5a5; }
+.vc  { color: var(--accent); }
+/* ── Steps ── */
+.steps { list-style: none; margin: 6px 0; }
+.steps li {
+  display: flex; gap: 14px; padding: 11px 0;
+  border-bottom: 1px solid #0c1828; font-size: 0.82rem;
+  align-items: flex-start;
+}
+.steps li:last-child { border-bottom: none; }
+.snum {
+  min-width: 26px; height: 26px; border-radius: 4px;
+  background: var(--accent); color: #000;
+  font-family: 'Space Mono', monospace; font-size: 0.65rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+code {
+  font-family: 'Space Mono', monospace; font-size: 0.72rem;
+  background: var(--codebg); color: var(--accent);
+  padding: 1px 6px; border-radius: 3px; border: 1px solid #0f1f30;
+}
+/* ── Mode cards ── */
+.mode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 12px; margin: 12px 0; }
+.mcard {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 13px 14px;
+}
+.mcard .mt { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--accent); margin-bottom: 5px; }
+.mcard p { font-size: 0.77rem; color: var(--muted); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <h1>// RPi 4 — LED WALL BUILD GUIDE</h1>
+    <p>0.5m × ~9cm music-reactive installation · USB microphone · spectrum visualiser</p>
+    <div class="tags">
+      <span class="tag c">432 LEDs</span>
+      <span class="tag g">USB Mic</span>
+      <span class="tag p">Spectrum Bars</span>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active"  onclick="show('parts',this)">01 · PARTS</div>
+  <div class="tab"         onclick="show('layout',this)">02 · LAYOUT</div>
+  <div class="tab"         onclick="show('wiring',this)">03 · WIRING</div>
+  <div class="tab"         onclick="show('setup',this)">04 · SETUP</div>
+  <div class="tab"         onclick="show('code',this)">05 · CODE</div>
+</div>
+
+<!-- ══ 01 PARTS ══════════════════════════════════════════ -->
+<div id="p-parts" class="panel active">
+
+  <div class="sec">Core Electronics</div>
+  <table>
+    <thead><tr><th>Component</th><th>Qty</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="item">WS2812B LED strip, 144 LEDs/m, 5V <span class="etag e">essential</span></td>
+        <td class="qty">3 m</td>
+        <td class="note">Buy a 3m roll of the 144/m (high-density) variant and cut into 6 × 0.5m strips. Get IP30 (no coating) — IP65 silicone diffuses unevenly.</td>
+      </tr>
+      <tr>
+        <td class="item">USB mini condenser microphone <span class="etag e">essential</span></td>
+        <td class="qty">1</td>
+        <td class="note">Any small USB desk mic (~$8–15 on Amazon). Plug-and-play on Raspberry Pi OS. Place near the speaker for best pickup.</td>
+      </tr>
+      <tr>
+        <td class="item">5V 12A power supply <span class="etag e">essential</span></td>
+        <td class="qty">1</td>
+        <td class="note">432 LEDs at 30% brightness ≈ 4A; your 12A unit gives generous headroom all the way up to full brightness. Never power strips from the Pi.</td>
+      </tr>
+      <tr>
+        <td class="item">470Ω resistor <span class="etag e">essential</span></td>
+        <td class="qty">1</td>
+        <td class="note">Placed on the data wire between GPIO18 and the first LED. Damps signal reflections that cause LED glitches.</td>
+      </tr>
+      <tr>
+        <td class="item">1000µF 6.3V electrolytic capacitor <span class="etag e">essential</span></td>
+        <td class="qty">2</td>
+        <td class="note">One across the +5V/GND rails at the first LED (S1); one at the midpoint power injection point (S4 start). At 144/m density the higher current draw makes midpoint injection worthwhile.</td>
+      </tr>
+      <tr>
+        <td class="item">18 AWG hookup wire (red / black) + 22 AWG (yellow for data)</td>
+        <td class="qty">~2 m</td>
+        <td class="note">18 AWG for all power runs. 22 AWG is fine for the data signal. Twist power pairs to reduce EMI flicker.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="sec">Mounting &amp; Diffusion</div>
+  <table>
+    <thead><tr><th>Component</th><th>Qty</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="item">Aluminium LED channel / U-profile, 0.5m <span class="etag o">optional</span></td>
+        <td class="qty">6</td>
+        <td class="note">Mounts strips neatly; acts as a heatsink for long run times. Usually ships with a white plastic diffuser cover.</td>
+      </tr>
+      <tr>
+        <td class="item">3mm opal / frosted acrylic sheet, 0.5m × 10cm <span class="etag o">optional</span></td>
+        <td class="qty">1</td>
+        <td class="note">Sits 20–30mm in front of strips. Turns individual dots into one smooth continuous glow — the single biggest upgrade to the final look.</td>
+      </tr>
+      <tr>
+        <td class="item">3-pin JST SM connectors (M/F pairs) <span class="etag o">optional</span></td>
+        <td class="qty">5 pairs</td>
+        <td class="note">One pair per strip connection point (5 inter-strip joins). Makes strips easily removable for repairs or transport.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="info warn">
+    <div class="lbl">⚡ Power Warning</div>
+    Never power LED strips from the Pi's 5V or GPIO header pins — the Pi can source only ~2.5A total. Always connect strip power directly to the PSU. The Pi shares only the GND reference with the PSU.
+  </div>
+</div>
+
+<!-- ══ 02 LAYOUT ══════════════════════════════════════════ -->
+<div id="p-layout" class="panel">
+
+  <div class="sec">Panel Arrangement — 0.5m × ~9cm</div>
+  <p style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;">6 parallel strips of 72 LEDs with ~15mm centre-to-centre spacing (~5mm gap between strip edges). Data is chained end-to-end (DOUT → DIN) so all 432 LEDs are addressable from a single GPIO pin.</p>
+
+  <svg viewBox="0 0 660 190" xmlns="http://www.w3.org/2000/svg"
+       style="width:100%;max-width:660px;background:#050c15;border:1px solid #1a2a3a;border-radius:8px;display:block;">
+    <defs>
+      <pattern id="dots" width="18" height="18" patternUnits="userSpaceOnUse">
+        <circle cx="9" cy="9" r="0.8" fill="#0d1e2e"/>
+      </pattern>
+    </defs>
+    <rect width="660" height="190" fill="url(#dots)"/>
+
+    <!-- Panel outline -->
+    <rect x="58" y="42" width="460" height="88" rx="5" fill="none"
+          stroke="#1a2a3a" stroke-width="1.5" stroke-dasharray="6,4"/>
+
+    <!-- Dimension labels -->
+    <text x="288" y="22" fill="#4a7a90" font-family="Space Mono,monospace" font-size="10" text-anchor="middle">500 mm</text>
+    <line x1="58" y1="25" x2="518" y2="25" stroke="#1a3a50" stroke-width="1"/>
+    <text x="44" y="86" fill="#4a7a90" font-family="Space Mono,monospace" font-size="10"
+          text-anchor="middle" transform="rotate(-90,44,86)">~90 mm</text>
+
+    <!-- LED pixel dots -->
+    <circle cx="70.0" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="70.0" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="70.0" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="70.0" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="70.0" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="70.0" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="70.0" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="70.0" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="70.0" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="76.3" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="76.3" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="76.3" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="76.3" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="76.3" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="76.3" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="76.3" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="76.3" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="76.3" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="82.6" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="82.6" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="82.6" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="82.6" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="82.6" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="82.6" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="82.6" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="82.6" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="82.6" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="89.0" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="89.0" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="89.0" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="89.0" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="89.0" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="89.0" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="89.0" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="89.0" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="89.0" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="95.3" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="95.3" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="95.3" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="95.3" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="95.3" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="95.3" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="95.3" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="95.3" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="95.3" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="101.6" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="101.6" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="101.6" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="101.6" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="101.6" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="101.6" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="101.6" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="101.6" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="101.6" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="101.6" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="107.9" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="107.9" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="107.9" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="107.9" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="107.9" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="107.9" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="107.9" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="107.9" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="107.9" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="107.9" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="107.9" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="114.3" cy="51" r="2.4" fill="#ff0000" opacity="0.93"/>    <circle cx="114.3" cy="51" r="5.0" fill="#ff0000" opacity="0.11"/>    <circle cx="114.3" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="114.3" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="114.3" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="114.3" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="114.3" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="114.3" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="114.3" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="114.3" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="114.3" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="114.3" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="120.6" cy="51" r="2.4" fill="#ff0000" opacity="0.93"/>    <circle cx="120.6" cy="51" r="5.0" fill="#ff0000" opacity="0.11"/>    <circle cx="120.6" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="120.6" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="120.6" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="120.6" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="120.6" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="120.6" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="120.6" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="120.6" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="120.6" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="120.6" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="126.9" cy="51" r="2.4" fill="#ff0000" opacity="0.93"/>    <circle cx="126.9" cy="51" r="5.0" fill="#ff0000" opacity="0.11"/>    <circle cx="126.9" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="126.9" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="126.9" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="126.9" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="126.9" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="126.9" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="126.9" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="126.9" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="126.9" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="126.9" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="133.2" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="133.2" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="133.2" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="133.2" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="133.2" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="133.2" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="133.2" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="133.2" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="133.2" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="133.2" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="133.2" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="139.6" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="139.6" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="139.6" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="139.6" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="139.6" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="139.6" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="139.6" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="139.6" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="139.6" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="139.6" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="145.9" cy="51" r="2.4" fill="#ff0000" opacity="0.93"/>    <circle cx="145.9" cy="51" r="5.0" fill="#ff0000" opacity="0.11"/>    <circle cx="145.9" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="145.9" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="145.9" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="145.9" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="145.9" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="145.9" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="145.9" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="145.9" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="145.9" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="145.9" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="152.2" cy="51" r="2.4" fill="#ff0000" opacity="0.93"/>    <circle cx="152.2" cy="51" r="5.0" fill="#ff0000" opacity="0.11"/>    <circle cx="152.2" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="152.2" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="152.2" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="152.2" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="152.2" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="152.2" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="152.2" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="152.2" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="152.2" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="152.2" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="158.5" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="158.5" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="158.5" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="158.5" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="158.5" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="158.5" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="158.5" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="158.5" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="158.5" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="158.5" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="158.5" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="164.9" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="164.9" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="164.9" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="164.9" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="164.9" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="164.9" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="164.9" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="164.9" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="164.9" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="164.9" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="164.9" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="171.2" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="171.2" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="171.2" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="171.2" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="171.2" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="171.2" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="171.2" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="171.2" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="171.2" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="171.2" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="171.2" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="177.5" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="177.5" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="177.5" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="177.5" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="177.5" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="177.5" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="177.5" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="177.5" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="177.5" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="177.5" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="183.8" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="183.8" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="183.8" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="183.8" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="183.8" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="183.8" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="183.8" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="183.8" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="183.8" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="183.8" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="190.2" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="190.2" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="190.2" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="190.2" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="190.2" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="190.2" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="190.2" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="190.2" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="190.2" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="190.2" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="196.5" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="196.5" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="196.5" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="196.5" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="196.5" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="196.5" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="196.5" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="196.5" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="196.5" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="202.8" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="202.8" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="202.8" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="202.8" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="202.8" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="202.8" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="202.8" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="202.8" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="202.8" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="209.1" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="209.1" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="209.1" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="209.1" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="209.1" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="209.1" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="209.1" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="209.1" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="215.5" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="215.5" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="215.5" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="215.5" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="215.5" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="215.5" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="215.5" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="221.8" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="221.8" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="221.8" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="221.8" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="221.8" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="221.8" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="221.8" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="228.1" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="228.1" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="228.1" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="228.1" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="228.1" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="228.1" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="228.1" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="234.4" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="234.4" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="234.4" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="234.4" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="234.4" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="234.4" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="234.4" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="240.7" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="240.7" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="240.7" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="240.7" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="240.7" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="240.7" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="240.7" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="240.7" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="247.1" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="247.1" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="247.1" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="247.1" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="247.1" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="247.1" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="247.1" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="247.1" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="247.1" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="253.4" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="253.4" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="253.4" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="253.4" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="253.4" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="253.4" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="253.4" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="253.4" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="253.4" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="253.4" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="259.7" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="259.7" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="259.7" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="259.7" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="259.7" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="259.7" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="259.7" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="259.7" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="259.7" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="259.7" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="259.7" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="266.0" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="266.0" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="266.0" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="266.0" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="266.0" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="266.0" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="266.0" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="266.0" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="266.0" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="266.0" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="266.0" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="272.4" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="272.4" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="272.4" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="272.4" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="272.4" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="272.4" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="272.4" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="272.4" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="272.4" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="272.4" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="272.4" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="278.7" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="278.7" cy="65" r="2.4" fill="#ff6400" opacity="0.93"/>    <circle cx="278.7" cy="65" r="5.0" fill="#ff6400" opacity="0.11"/>    <circle cx="278.7" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="278.7" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="278.7" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="278.7" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="278.7" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="278.7" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="278.7" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="278.7" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="285.0" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="285.0" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="285.0" cy="79" r="2.4" fill="#ffc900" opacity="0.93"/>    <circle cx="285.0" cy="79" r="5.0" fill="#ffc900" opacity="0.11"/>    <circle cx="285.0" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="285.0" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="285.0" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="285.0" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="285.0" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="285.0" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="291.3" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="291.3" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="291.3" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="291.3" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="291.3" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="291.3" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="291.3" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="291.3" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="291.3" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="297.7" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="297.7" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="297.7" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="297.7" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="297.7" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="297.7" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="297.7" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="297.7" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="297.7" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="304.0" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="304.0" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="304.0" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="304.0" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="304.0" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="304.0" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="304.0" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="304.0" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="310.3" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="310.3" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="310.3" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="310.3" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="310.3" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="310.3" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="310.3" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="316.6" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="316.6" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="316.6" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="316.6" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="316.6" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="316.6" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="316.6" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="323.0" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="323.0" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="323.0" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="323.0" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="323.0" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="323.0" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="323.0" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="329.3" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="329.3" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="329.3" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="329.3" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="329.3" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="329.3" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="329.3" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="335.6" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="335.6" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="335.6" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="335.6" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="335.6" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="335.6" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="335.6" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="335.6" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="341.9" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="341.9" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="341.9" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="341.9" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="341.9" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="341.9" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="341.9" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="341.9" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="341.9" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="348.3" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="348.3" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="348.3" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="348.3" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="348.3" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="348.3" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="348.3" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="348.3" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="348.3" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="354.6" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="354.6" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="354.6" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="354.6" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="354.6" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="354.6" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="354.6" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="354.6" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="354.6" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="360.9" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="360.9" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="360.9" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="360.9" cy="93" r="2.4" fill="#cfff00" opacity="0.93"/>    <circle cx="360.9" cy="93" r="5.0" fill="#cfff00" opacity="0.11"/>    <circle cx="360.9" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="360.9" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="360.9" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="360.9" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="367.2" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="367.2" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="367.2" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="367.2" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="367.2" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="367.2" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="367.2" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="367.2" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="373.5" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="373.5" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="373.5" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="373.5" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="373.5" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="373.5" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="373.5" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="379.9" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="379.9" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="379.9" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="379.9" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="379.9" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="379.9" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="379.9" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="386.2" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="386.2" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="386.2" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="386.2" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="386.2" cy="107" r="2.4" fill="#6aff00" opacity="0.93"/>    <circle cx="386.2" cy="107" r="5.0" fill="#6aff00" opacity="0.11"/>    <circle cx="386.2" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="386.2" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="392.5" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="392.5" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="392.5" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="392.5" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="392.5" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="392.5" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="392.5" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="398.8" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="398.8" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="398.8" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="398.8" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="398.8" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="398.8" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="398.8" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="405.2" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="405.2" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="405.2" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="405.2" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="405.2" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="405.2" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="405.2" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="411.5" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="411.5" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="411.5" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="411.5" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="411.5" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="411.5" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="411.5" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="417.8" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="417.8" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="417.8" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="417.8" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="417.8" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="417.8" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="417.8" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="424.1" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="424.1" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="424.1" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="424.1" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="424.1" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="424.1" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="424.1" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="430.5" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="430.5" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="430.5" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="430.5" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="430.5" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="430.5" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="430.5" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="436.8" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="436.8" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="436.8" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="436.8" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="436.8" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="436.8" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="436.8" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="443.1" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="443.1" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="443.1" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="443.1" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="443.1" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="443.1" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="443.1" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="449.4" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="449.4" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="449.4" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="449.4" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="449.4" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="449.4" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="449.4" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="455.8" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="455.8" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="455.8" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="455.8" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="455.8" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="455.8" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="455.8" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="462.1" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="462.1" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="462.1" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="462.1" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="462.1" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="462.1" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="462.1" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="468.4" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="468.4" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="468.4" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="468.4" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="468.4" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="468.4" cy="121" r="2.4" fill="#0c1e30"/>    <circle cx="474.7" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="474.7" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="474.7" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="474.7" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="474.7" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="474.7" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="474.7" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="481.1" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="481.1" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="481.1" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="481.1" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="481.1" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="481.1" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="481.1" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="487.4" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="487.4" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="487.4" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="487.4" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="487.4" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="487.4" cy="121" r="2.4" fill="#0c1e30"/>    <circle cx="493.7" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="493.7" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="493.7" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="493.7" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="493.7" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="493.7" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="493.7" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="500.0" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="500.0" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="500.0" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="500.0" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="500.0" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="500.0" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="500.0" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="506.4" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="506.4" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="506.4" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="506.4" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="506.4" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="506.4" cy="121" r="2.4" fill="#0c1e30"/>    <circle cx="512.7" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="512.7" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="512.7" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="512.7" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="512.7" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="512.7" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="512.7" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>    <circle cx="519.0" cy="51" r="2.4" fill="#0c1e30"/>    <circle cx="519.0" cy="65" r="2.4" fill="#0c1e30"/>    <circle cx="519.0" cy="79" r="2.4" fill="#0c1e30"/>    <circle cx="519.0" cy="93" r="2.4" fill="#0c1e30"/>    <circle cx="519.0" cy="107" r="2.4" fill="#0c1e30"/>    <circle cx="519.0" cy="121" r="2.4" fill="#05ff00" opacity="0.93"/>    <circle cx="519.0" cy="121" r="5.0" fill="#05ff00" opacity="0.11"/>
+
+    <!-- Strip-to-strip spacing callout -->
+    <line x1="528" y1="51" x2="528" y2="65" stroke="#3a6a80" stroke-width="1"/>
+    <line x1="523" y1="51" x2="533" y2="51" stroke="#3a6a80" stroke-width="1"/>
+    <line x1="523" y1="65" x2="533" y2="65" stroke="#3a6a80" stroke-width="1"/>
+    <text x="542" y="62" fill="#4a8aaa" font-family="Space Mono,monospace" font-size="9">15mm</text>
+
+    <!-- Strip labels -->
+    <text x="530" y="55" fill="#4a8aaa" font-family="Space Mono,monospace" font-size="8">S1</text> <text x="530" y="69" fill="#4a8aaa" font-family="Space Mono,monospace" font-size="8">S2</text> <text x="530" y="83" fill="#4a8aaa" font-family="Space Mono,monospace" font-size="8">S3</text> <text x="530" y="97" fill="#4a8aaa" font-family="Space Mono,monospace" font-size="8">S4</text> <text x="530" y="111" fill="#4a8aaa" font-family="Space Mono,monospace" font-size="8">S5</text> <text x="530" y="125" fill="#4a8aaa" font-family="Space Mono,monospace" font-size="8">S6</text>
+
+    <!-- Data chain bracket on left -->
+    <path d="M 58 51 L 46 51 L 46 121 L 58 121"
+          fill="none" stroke="#00e5cc" stroke-width="1.5" stroke-dasharray="3,2" opacity=".6"/>
+    <text x="26" y="90" fill="#00e5cc" font-family="Space Mono,monospace" font-size="9"
+          text-anchor="middle" transform="rotate(-90,26,86)" opacity=".7">DATA CHAIN</text>
+
+    <!-- Diffuser outline hint -->
+    <rect x="58" y="39" width="460" height="94" rx="4" fill="none"
+          stroke="#00e5cc" stroke-width="0.8" stroke-dasharray="4,5" opacity=".13"/>
+
+    <!-- Footer labels -->
+    <text x="288" y="160" fill="#4a7a90" font-family="Space Mono,monospace" font-size="10" text-anchor="middle">6 strips × 72 LEDs = 432 total · ~15mm centres · single GPIO18 data pin</text>
+    <text x="288" y="175" fill="#00e5cc" font-family="Space Mono,monospace" font-size="8" text-anchor="middle" opacity=".4">— — — optional opal acrylic diffuser (30 mm in front of strips) — — —</text>
+  </svg>
+
+
+  <div class="mode-grid" style="margin-top:18px;">
+    <div class="mcard">
+      <div class="mt">📏 Strip Spacing</div>
+      <p>~5mm gap between strip edges gives ~15mm centre-to-centre. The compact 9cm height means the panel looks like a dense grid — especially effective with the acrylic diffuser.</p>
+    </div>
+    <div class="mcard">
+      <div class="mt">🔗 Data Chaining</div>
+      <p>Connect S1 DOUT → S2 DIN → ... → S6 DIN. All 432 pixels are addressed as one continuous strip from GPIO18.</p>
+    </div>
+    <div class="mcard">
+      <div class="mt">⚡ Power Inject</div>
+      <p>Run +5V and GND from the PSU to the start of S1 <em>and</em> to the start of S4 (midpoint). At 144/m density this prevents colour shift at the far end under load.</p>
+    </div>
+    <div class="mcard">
+      <div class="mt">🎨 Diffuser Depth</div>
+      <p>With strips this close, even 10–15mm of diffuser depth blends the rows smoothly. 20mm is the sweet spot — go deeper and you lose some brightness for no extra gain at this density.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 03 WIRING ══════════════════════════════════════════ -->
+<div id="p-wiring" class="panel">
+
+  <div class="sec">Connection Diagram</div>
+
+  <svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg"
+       style="width:100%;max-width:760px;background:#050c15;border:1px solid #1a2a3a;border-radius:8px;display:block;margin-bottom:18px;">
+    <defs>
+      <marker id="ac" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+        <polygon points="0 0,7 2.5,0 5" fill="#00e5cc" opacity=".9"/>
+      </marker>
+      <marker id="ar" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+        <polygon points="0 0,7 2.5,0 5" fill="#ff5555" opacity=".9"/>
+      </marker>
+      <marker id="ag" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+        <polygon points="0 0,7 2.5,0 5" fill="#999" opacity=".9"/>
+      </marker>
+      <pattern id="pcb" width="14" height="14" patternUnits="userSpaceOnUse">
+        <circle cx="7" cy="7" r="0.6" fill="#0a1a28"/>
+      </pattern>
+    </defs>
+    <rect width="760" height="420" fill="url(#pcb)"/>
+
+    <!-- ── Raspberry Pi ── -->
+    <rect x="15" y="45" width="140" height="215" rx="7" fill="#081a10" stroke="#2a7a38" stroke-width="1.5"/>
+    <text x="85" y="68" fill="#00ff88" font-family="Space Mono,monospace" font-size="9.5" text-anchor="middle" font-weight="700">RASPBERRY Pi 4</text>
+    <circle cx="155" cy="95"  r="5" fill="#ff4444"/>
+    <text x="147" y="94"  fill="#ff7777" font-family="Space Mono,monospace" font-size="8" text-anchor="end">5V (pin 2)</text>
+    <circle cx="155" cy="120" r="5" fill="#666"/>
+    <text x="147" y="119" fill="#bbbbbb" font-family="Space Mono,monospace" font-size="8" text-anchor="end">GND (pin 6)</text>
+    <circle cx="155" cy="150" r="5" fill="#00e5cc"/>
+    <text x="147" y="149" fill="#00e5cc" font-family="Space Mono,monospace" font-size="8" text-anchor="end">GPIO18 (pin 12)</text>
+    <rect x="15" y="232" width="38" height="22" rx="3" fill="#0a1e30" stroke="#2a5a8a" stroke-width="1"/>
+    <text x="34" y="247" fill="#67e8f9" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">USB</text>
+
+    <!-- ── 470Ω Resistor ── -->
+    <rect x="250" y="141" width="46" height="18" rx="3" fill="#1a180a" stroke="#ffd700" stroke-width="1.5"/>
+    <text x="273" y="153" fill="#ffd700" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle">470 Ω</text>
+
+    <!-- ── LED Strips ── -->
+    <rect x="490" y="40" width="230" height="275" rx="7" fill="#100820" stroke="#5a2a90" stroke-width="1.5"/>
+    <text x="605" y="63"  fill="#c084fc" font-family="Space Mono,monospace" font-size="9.5" text-anchor="middle" font-weight="700">LED STRIPS × 6</text>
+    <text x="605" y="79"  fill="#9a7abf" font-family="Space Mono,monospace" font-size="8"   text-anchor="middle">432 LEDs total</text>
+    <text x="505" y="97"  fill="#6a8aaa" font-family="Space Mono,monospace" font-size="7.5">S1 START</text>
+    <circle cx="490" cy="108" r="4.5" fill="#ff4444"/>
+    <text x="502" y="112" fill="#ff7777" font-family="Space Mono,monospace" font-size="8">+5V</text>
+    <circle cx="490" cy="130" r="4.5" fill="#666"/>
+    <text x="502" y="134" fill="#bbbbbb" font-family="Space Mono,monospace" font-size="8">GND</text>
+    <circle cx="490" cy="152" r="4.5" fill="#00e5cc"/>
+    <text x="502" y="156" fill="#00e5cc" font-family="Space Mono,monospace" font-size="8">DIN (data)</text>
+    <line x1="495" y1="172" x2="710" y2="172" stroke="#2a3a4a" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="505" y="187" fill="#6a8aaa" font-family="Space Mono,monospace" font-size="7.5">S4 INJECT</text>
+    <circle cx="490" cy="198" r="4.5" fill="#ff4444" opacity=".8"/>
+    <text x="502" y="202" fill="#ff8888" font-family="Space Mono,monospace" font-size="8">+5V</text>
+    <circle cx="490" cy="220" r="4.5" fill="#666" opacity=".8"/>
+    <text x="502" y="224" fill="#bbbbbb" font-family="Space Mono,monospace" font-size="8">GND</text>
+
+    <!-- ── Power Supply ── -->
+    <rect x="228" y="322" width="160" height="68" rx="6" fill="#1a100a" stroke="#8a3a08" stroke-width="1.5"/>
+    <text x="308" y="346" fill="#ff8833" font-family="Space Mono,monospace" font-size="10" text-anchor="middle" font-weight="700">PSU  5V / 12A</text>
+    <circle cx="258" cy="365" r="4.5" fill="#ff4444"/>
+    <text x="268" y="369" fill="#ff7777" font-family="Space Mono,monospace" font-size="8">+5V</text>
+    <circle cx="335" cy="365" r="4.5" fill="#666"/>
+    <text x="345" y="369" fill="#bbbbbb" font-family="Space Mono,monospace" font-size="8">GND</text>
+
+    <!-- ── Capacitor symbol ── -->
+    <text x="455" y="95" fill="#00e5cc" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle">1000µF</text>
+    <line x1="455" y1="99"  x2="455" y2="111" stroke="#5a90a8" stroke-width="2"/>
+    <line x1="443" y1="111" x2="467" y2="111" stroke="#00e5cc" stroke-width="3"/>
+    <line x1="443" y1="118" x2="467" y2="118" stroke="#00e5cc" stroke-width="3"/>
+    <line x1="455" y1="118" x2="455" y2="130" stroke="#5a90a8" stroke-width="2"/>
+
+    <!-- ── USB Mic ── -->
+    <rect x="15" y="310" width="100" height="42" rx="5" fill="#08141e" stroke="#2a508a" stroke-width="1.2"/>
+    <text x="65" y="327" fill="#67e8f9" font-family="Space Mono,monospace" font-size="9" text-anchor="middle">USB MIC</text>
+    <text x="65" y="343" fill="#5a8acc" font-family="Space Mono,monospace" font-size="7.5" text-anchor="middle">plug &amp; play</text>
+
+    <!-- ══ WIRES ══ -->
+
+    <!-- DATA: GPIO18 → 470Ω → DIN -->
+    <path d="M 160 150 L 250 150" stroke="#00e5cc" stroke-width="2" fill="none" marker-end="url(#ac)"/>
+    <path d="M 296 150 L 490 152" stroke="#00e5cc" stroke-width="2" fill="none" marker-end="url(#ac)"/>
+    <text x="393" y="144" fill="#00e5cc" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle">data signal</text>
+
+    <!-- +5V: PSU → LED S1 (up left then across top) -->
+    <path d="M 258 322 L 258 68 L 490 68 L 490 108" stroke="#ff4444" stroke-width="2.2" stroke-dasharray="6,2" fill="none" marker-end="url(#ar)"/>
+    <text x="374" y="62" fill="#ff7777" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle">+5V power</text>
+
+    <!-- +5V: PSU → LED S4 inject (separate run, left of main) -->
+    <path d="M 235 342 L 235 198 L 490 198" stroke="#ff4444" stroke-width="1.8" stroke-dasharray="5,2" fill="none" marker-end="url(#ar)" opacity=".75"/>
+    <text x="362" y="192" fill="#ff8888" font-family="Space Mono,monospace" font-size="8" text-anchor="middle" opacity=".85">+5V inject (S4)</text>
+
+    <!-- GND: PSU → LED S1 GND (up right of PSU then around) -->
+    <path d="M 335 322 L 335 270 L 478 270 L 478 130 L 490 130" stroke="#999" stroke-width="2.2" stroke-dasharray="6,2" fill="none" marker-end="url(#ag)"/>
+
+    <!-- GND: PSU → LED S4 GND inject -->
+    <path d="M 478 220 L 490 220" stroke="#999" stroke-width="1.8" stroke-dasharray="4,2" fill="none" marker-end="url(#ag)" opacity=".75"/>
+
+    <!-- SHARED GND: PSU GND → Pi GND (bottom rail) -->
+    <path d="M 335 365 L 335 408 L 8 408 L 8 120 L 155 120" stroke="#999" stroke-width="1.8" stroke-dasharray="3,2" fill="none"/>
+    <text x="175" y="403" fill="#8ab0c8" font-family="Space Mono,monospace" font-size="8.5" text-anchor="middle">shared GND</text>
+
+    <!-- Cap connects to +5V top rail and GND rail -->
+    <path d="M 455 99 L 455 68" stroke="#00e5cc" stroke-width="1" stroke-dasharray="2,2" fill="none" opacity=".4"/>
+    <path d="M 455 130 L 455 270" stroke="#999" stroke-width="1" stroke-dasharray="2,2" fill="none" opacity=".4"/>
+
+    <!-- USB Mic → Pi USB port -->
+    <path d="M 65 310 L 65 272 L 34 272 L 34 254" stroke="#67e8f9" stroke-width="1.8" stroke-dasharray="4,2" fill="none"/>
+
+    <!-- ── Legend ── -->
+    <rect x="15" y="382" width="730" height="26" rx="3" fill="#080f1a" stroke="#1a2a3a" stroke-width=".5"/>
+    <line x1="26" y1="395" x2="56" y2="395" stroke="#00e5cc" stroke-width="2.2"/>
+    <text x="62" y="399" fill="#8ab0c8" font-family="Space Mono,monospace" font-size="8.5">DATA</text>
+    <line x1="120" y1="395" x2="150" y2="395" stroke="#ff4444" stroke-width="2.2" stroke-dasharray="5,2"/>
+    <text x="156" y="399" fill="#8ab0c8" font-family="Space Mono,monospace" font-size="8.5">+5V POWER</text>
+    <line x1="265" y1="395" x2="295" y2="395" stroke="#999" stroke-width="2.2" stroke-dasharray="5,2"/>
+    <text x="301" y="399" fill="#8ab0c8" font-family="Space Mono,monospace" font-size="8.5">GND POWER</text>
+    <line x1="415" y1="395" x2="445" y2="395" stroke="#999" stroke-width="1.8" stroke-dasharray="3,2"/>
+    <text x="451" y="399" fill="#8ab0c8" font-family="Space Mono,monospace" font-size="8.5">SHARED GND</text>
+    <line x1="575" y1="395" x2="605" y2="395" stroke="#67e8f9" stroke-width="1.8" stroke-dasharray="4,2"/>
+    <text x="611" y="399" fill="#8ab0c8" font-family="Space Mono,monospace" font-size="8.5">USB</text>
+  </svg>
+
+  <div class="sec">Step-by-Step</div>
+  <ul class="steps">
+    <li><span class="snum">1</span><div><strong>PSU → LED power:</strong> Run 18 AWG red wire from PSU +5V to the +5V pad at the very start of S1, and again at the join between S3 and S4 (power injection). Mirror both runs with black GND wire.</div></li>
+    <li><span class="snum">2</span><div><strong>Capacitors:</strong> Solder a 1000µF cap (positive leg to +5V, negative to GND) directly across the power pads at S1 and at the S3/S4 midpoint. Confirm polarity before soldering — reverse polarity destroys the cap.</div></li>
+    <li><span class="snum">3</span><div><strong>Data signal:</strong> Pi GPIO18 (pin 12) → 470Ω resistor → S1 DIN. Keep this wire as short as practical. Then S1 DOUT → S2 DIN → ... → S6 DIN to chain all strips.</div></li>
+    <li><span class="snum">4</span><div><strong>Shared GND:</strong> Connect a wire from Pi GND (e.g. pin 6) to the PSU GND rail. <em>Critical</em> — without this, the data signal has no voltage reference and LEDs will behave erratically.</div></li>
+    <li><span class="snum">5</span><div><strong>USB microphone:</strong> Plug into any USB-A port. Verify detection with <code>arecord -l</code> — you should see it listed as "card 1" or similar.</div></li>
+  </ul>
+
+  <div class="info warn">
+    <div class="lbl">⚡ Before powering on</div>
+    Double-check that PSU GND and Pi GND share a common wire. Also confirm the capacitor polarity — reverse polarity will destroy it.
+  </div>
+</div>
+
+<!-- ══ 04 SETUP ══════════════════════════════════════════ -->
+<div id="p-setup" class="panel">
+
+  <div class="sec">Software Installation</div>
+  <ul class="steps">
+    <li>
+      <span class="snum">1</span>
+      <div><strong>Flash Raspberry Pi OS Lite (64-bit)</strong> to your microSD using Raspberry Pi Imager. In the imager settings (gear icon), enable SSH and set your WiFi SSID/password before writing.</div>
+    </li>
+    <li>
+      <span class="snum">2</span>
+      <div>
+        <strong>SSH in and update:</strong>
+        <div class="code">sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3-pip python3-dev git \
+  libatlas-base-dev portaudio19-dev</div>
+      </div>
+    </li>
+    <li>
+      <span class="snum">3</span>
+      <div>
+        <strong>Install Python libraries:</strong>
+        <div class="code">sudo pip3 install rpi_ws281x pyaudio numpy scipy RPi.GPIO</div>
+      </div>
+    </li>
+    <li>
+      <span class="snum">4</span>
+      <div>
+        <strong>Disable onboard audio — it conflicts with GPIO18 PWM (used by LEDs).</strong> Edit <code>/boot/config.txt</code>:
+        <div class="code">sudo nano /boot/config.txt
+
+<span class="cm"># Find the audio line and change it to:</span>
+dtparam=audio=off
+
+<span class="cm"># Save with Ctrl+O, exit with Ctrl+X, then reboot:</span>
+sudo reboot</div>
+      </div>
+    </li>
+    <li>
+      <span class="snum">5</span>
+      <div>
+        <strong>Verify USB mic is detected:</strong>
+        <div class="code">arecord -l
+<span class="cm"># Expect: card 1: Device [USB Audio Device]...</span>
+
+<span class="cm"># Quick 3-second test recording:</span>
+arecord -D hw:1,0 -d 3 -f cd /tmp/test.wav && aplay /tmp/test.wav</div>
+      </div>
+    </li>
+    <li>
+      <span class="snum">6</span>
+      <div>
+        <strong>Test your LED strip is wired correctly — run this one-shot test as root:</strong>
+        <div class="code">sudo python3 - &lt;&lt; 'EOF'
+from rpi_ws281x import PixelStrip, Color
+strip = PixelStrip(432, 18, 800000, 10, False, 60, 0)
+strip.begin()
+for i in range(strip.numPixels()):
+    strip.setPixelColor(i, Color(0, 50, 50))  # teal
+strip.show()
+print("LEDs on — Ctrl+C to exit")
+import time; time.sleep(30)
+EOF</div>
+        All 432 LEDs should glow teal. If only some light up, check your power connection at S1.
+      </div>
+    </li>
+  </ul>
+</div>
+
+<!-- ══ 05 CODE ══════════════════════════════════════════ -->
+<div id="p-code" class="panel">
+
+  <div class="info" style="margin-bottom:18px;">
+    <div class="lbl">📁 Save &amp; Run</div>
+    Save as <code>~/led_wall.py</code> — run with <code>sudo python3 ~/led_wall.py</code>.
+  </div>
+
+  <div class="mode-grid">
+    <div class="mcard"><div class="mt">📊 Spectrum Bars</div><p>72 frequency columns across the X-axis. Each bar grows upward on the Y-axis based on that band's amplitude — green at low levels, yellow at mid, red at peak.</p></div>
+  </div>
+
+  <div class="code" style="margin-top:16px; font-size:0.67rem;">
+<span class="cm">#!/usr/bin/env python3</span>
+<span class="cm"># LED Wall — Spectrum Visualiser</span>
+<span class="cm"># 6 strips × 72 LEDs = 432 total · 0.5m × 30cm panel</span>
+<span class="cm"># Wiring: USB mic into Pi USB  ·  GPIO18 → LED DIN</span>
+<span class="cm"># Run:    sudo python3 led_wall.py</span>
+
+<span class="kw">import</span> pyaudio, numpy <span class="kw">as</span> np, colorsys
+<span class="kw">from</span> rpi_ws281x <span class="kw">import</span> PixelStrip, Color
+
+<span class="cm"># ── LED CONFIG ────────────────────────────────────────</span>
+LED_COUNT      = <span class="nm">432</span>      <span class="cm"># 6 strips × 72 LEDs</span>
+LED_PIN        = <span class="nm">18</span>       <span class="cm"># GPIO18 (PWM0)</span>
+LED_FREQ_HZ    = <span class="nm">800000</span>
+LED_DMA        = <span class="nm">10</span>
+LED_BRIGHTNESS = <span class="nm">80</span>       <span class="cm"># 0–255 · keep ≤100 for power/heat</span>
+LED_INVERT     = <span class="nm">False</span>
+LED_CHANNEL    = <span class="nm">0</span>
+
+<span class="cm"># ── PANEL DIMENSIONS ──────────────────────────────────</span>
+COLS = <span class="nm">72</span>   <span class="cm"># LEDs per strip  (x-axis, 0.5m)</span>
+ROWS = <span class="nm">6</span>    <span class="cm"># number of strips (y-axis, 30cm)</span>
+
+<span class="cm"># ── AUDIO CONFIG ──────────────────────────────────────</span>
+CHUNK      = <span class="nm">1024</span>
+RATE       = <span class="nm">44100</span>
+CHANNELS   = <span class="nm">1</span>
+FORMAT     = pyaudio.paInt16
+MIC_INDEX  = <span class="nm">None</span>         <span class="cm"># None = auto · set to 1 if auto fails</span>
+
+<span class="cm"># ── GLOBALS ───────────────────────────────────────────</span>
+noise_floor = <span class="nm">50</span>           <span class="cm"># raise to 80–100 if LEDs react to silence</span>
+
+<span class="cm"># ── INIT ──────────────────────────────────────────────</span>
+strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ,
+                   LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+strip.begin()
+
+<span class="cm"># ── HELPERS ───────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">hsv</span>(h, s, v):
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+    <span class="kw">return</span> Color(int(r*<span class="nm">255</span>), int(g*<span class="nm">255</span>), int(b*<span class="nm">255</span>))
+
+<span class="kw">def</span> <span class="fn">get_fft</span>(data):
+    s   = np.frombuffer(data, dtype=np.int16).astype(float)
+    fft = np.abs(np.fft.rfft(s, n=CHUNK)) / <span class="nm">512.0</span>
+    <span class="kw">return</span> np.maximum(fft - noise_floor, <span class="nm">0</span>)
+
+<span class="kw">def</span> <span class="fn">clamp</span>(x): <span class="kw">return</span> min(<span class="nm">1.0</span>, x)
+
+<span class="kw">def</span> <span class="fn">clear</span>():
+    <span class="kw">for</span> i <span class="kw">in</span> range(strip.numPixels()):
+        strip.setPixelColor(i, Color(<span class="nm">0</span>,<span class="nm">0</span>,<span class="nm">0</span>))
+    strip.show()
+
+<span class="kw">def</span> <span class="fn">pixel</span>(col, row):
+    <span class="cm"># row 0 = S1 (top strip), row 5 = S6 (bottom strip)</span>
+    <span class="kw">return</span> row * COLS + col
+
+<span class="cm"># ── SPECTRUM BARS ────────────────────────────────────</span>
+<span class="cm"># 30 frequency bands along X. Bar height (Y) = amplitude.</span>
+<span class="cm"># Colour: green (quiet) → yellow → red (loud) from bottom up.</span>
+<span class="kw">def</span> <span class="fn">mode_spectrum_bars</span>(fft):
+    max_bin = len(fft)
+
+    <span class="kw">for</span> c <span class="kw">in</span> range(COLS):
+        <span class="cm"># Quadratic (log-ish) frequency mapping — more bass columns</span>
+        lo = int((c / COLS) ** <span class="nm">2</span> * max_bin)
+        hi = int(((c + <span class="nm">1</span>) / COLS) ** <span class="nm">2</span> * max_bin)
+        hi = max(hi, lo + <span class="nm">1</span>)
+        energy  = np.mean(fft[lo:hi]) <span class="kw">if</span> hi <= max_bin <span class="kw">else</span> <span class="nm">0</span>
+        bar_h   = round(clamp(energy / <span class="nm">150</span>) * ROWS)  <span class="cm"># 0–6 rows lit</span>
+
+        <span class="kw">for</span> r <span class="kw">in</span> range(ROWS):
+            row_from_bottom = ROWS - <span class="nm">1</span> - r   <span class="cm"># 0=bottom(S6), 5=top(S1)</span>
+            <span class="kw">if</span> row_from_bottom < bar_h:
+                <span class="cm"># hue: 0.33=green at bottom, 0=red at top</span>
+                hue = <span class="nm">0.33</span> * (<span class="nm">1</span> - row_from_bottom / (ROWS - <span class="nm">1</span>))
+                strip.setPixelColor(pixel(c, r), hsv(hue, <span class="nm">1.0</span>, <span class="nm">1.0</span>))
+            <span class="kw">else</span>:
+                strip.setPixelColor(pixel(c, r), Color(<span class="nm">0</span>,<span class="nm">0</span>,<span class="nm">0</span>))
+
+    strip.show()
+
+<span class="cm"># ── MAIN LOOP ─────────────────────────────────────────</span>
+p      = pyaudio.PyAudio()
+stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE,
+                input=<span class="nm">True</span>, input_device_index=MIC_INDEX,
+                frames_per_buffer=CHUNK)
+
+print(<span class="st">"🎵  LED Wall running · spectrum visualiser"</span>)
+print(<span class="st">"    72 frequency bands · 6 rows amplitude · Ctrl+C to quit"</span>)
+
+<span class="kw">try</span>:
+    <span class="kw">while</span> <span class="nm">True</span>:
+        data = stream.read(CHUNK, exception_on_overflow=<span class="nm">False</span>)
+        fft  = get_fft(data)
+        mode_spectrum_bars(fft)
+
+<span class="kw">except</span> KeyboardInterrupt:
+    print(<span class="st">"\nShutting down..."</span>)
+    clear()
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+</div>
+
+  <div class="info tip" style="margin-top:16px;">
+    <div class="lbl">🎛️ Tuning the sensitivity</div>
+    Bars too short? Lower the divisor in <code>clamp(energy / 150)</code> — try <code>/ 80</code>. Reacting to silence? Increase <code>noise_floor</code> from 50 up to 80–120. These two values get you dialled in for any room and speaker volume.
+  </div>
+
+  <div class="info" style="margin-top:12px;">
+    <div class="lbl">💡 Next ideas once it's working</div>
+    Add peak-hold dots: track the highest lit row per column and hold it for ~20 frames before it falls, for a classic VU meter feel. Try <code>scipy.signal.savgol_filter</code> on the band values for a smoother, less jittery response. Experiment with the frequency scale exponent — change <code>** 2</code> to <code>** 1.5</code> for more treble columns.
+  </div>
+
+</div>
+
+<script>
+function show(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('p-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
