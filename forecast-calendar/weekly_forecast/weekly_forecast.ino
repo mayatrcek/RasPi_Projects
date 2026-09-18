@@ -62,23 +62,58 @@ const char* brandText    = "gimmiesickvis.com";
 // the plan notes, or just grep regions.ts) when the site gains a spot.
 // Drift is harmless: the API validates the id and falls back to Diamond Bay.
 static const char PORTAL_INTRO[] =
-  "<div style='padding:10px;border:1px solid #ccc;border-radius:5px;margin-bottom:10px'>"
-  "<h3 style='margin:0 0 8px'>Dive forecast display</h3>"
+  "<div style='background:#FFFAEF;border:2px solid #161310;box-shadow:4px 4px 0 #161310;padding:12px;margin-bottom:18px'>"
+  "<h3 style='margin:0 0 8px;font-size:1.1rem'>Dive forecast display</h3>"
   "<p style='margin:0 0 8px'>This panel shows 7 days of dive conditions for one spot "
   "on the Victorian coast, and refreshes itself every hour.</p>"
-  "<p style='margin:0 0 8px'><b>To set it up:</b> tap <i>Configure WiFi</i>, pick your "
-  "network and enter its password. Set <i>Dive spot</i> to the beach you want, then press "
-  "<i>Save</i>. The panel redraws within a minute.</p>"
-  "<p style='margin:0'><b>To change the spot later:</b> press the BOOT button on the back "
-  "while the panel is idle, rejoin this network, and use <i>Setup</i>.</p>"
+  "<p style='margin:0 0 8px'><b>To set it up:</b> tap <i>Choose your WiFi network</i>, pick "
+  "yours and enter its password. Then tap <i>Choose your dive spot</i>, pick a beach from the "
+  "menu and press <i>Save</i>. The panel redraws within a minute.</p>"
+  "<p style='margin:0'><b>To change it later:</b> press the BOOT button on the back while the "
+  "panel is idle, then rejoin this network.</p>"
   "</div>";
 
-static const char SPOT_DATALIST[] =
-  "<datalist id='spots'><option value='bells'>Bells Beach</option><option value='winki'>Winkipop</option><option value='janjuc'>Jan Juc</option><option value='torquay'>Torquay Point</option><option value='roadknight'>Point Roadknight</option><option value='anglesea'>Anglesea</option><option value='lorne'>Lorne</option><option value='apollo'>Apollo Bay</option><option value='13th'>13th Beach</option><option value='barwon'>Barwon Heads</option><option value='oceangrove'>Ocean Grove</option><option value='lonsdale'>Point Lonsdale</option><option value='pointnepean'>Point Nepean (buoy)</option><option value='portsea'>Portsea Back Beach</option><option value='diamond'>Diamond Bay</option><option value='sorrento'>Sorrento Back Beach</option><option value='rye'>Rye Back Beach</option><option value='gunnamatta'>Gunnamatta</option><option value='schanck'>Cape Schanck</option><option value='flinders'>Flinders</option><option value='pointleo'>Point Leo</option><option value='woolamai'>Cape Woolamai</option><option value='smiths'>Smiths Beach</option><option value='surfbeach'>Surf Beach</option><option value='pyramid'>Pyramid Rock</option><option value='express'>Express Point</option><option value='summerland'>Summerland</option><option value='ycw'>YCW / Cat Bay</option><option value='capepat'>Cape Paterson</option><option value='inverloch'>Inverloch</option><option value='venus'>Venus Bay</option><option value='waratah'>Waratah Bay</option><option value='sandypt'>Sandy Point</option><option value='walkerville'>Walkerville</option><option value='tonguept'>Tongue Point</option><option value='whiskybay'>Whisky Bay</option><option value='squeaky'>Squeaky Beach</option><option value='normanbay'>Norman Bay (Tidal River)</option><option value='shellback'>Shellback Island</option><option value='oberon'>Oberon Bay</option><option value='glennie'>Great Glennie Island</option><option value='cleft'>Cleft Island (Skull Rock)</option><option value='anser'>Anser Island</option><option value='kanowna'>Kanowna Island</option><option value='rodondo'>Rodondo Island</option><option value='waterloobay'>Waterloo Bay</option><option value='refugecove'>Refuge Cove</option><option value='sealerscove'>Sealers Cove</option><option value='portcampbell'>Port Campbell</option><option value='princetown'>Princetown</option><option value='warrnambool'>Warrnambool (Logans)</option><option value='portfairy'>Port Fairy</option><option value='portland'>Portland</option><option value='fort'>South Channel Fort</option><option value='blairgowrie'>Blairgowrie (bay)</option><option value='ryepier'>Rye Pier</option><option value='sorrentopier'>Sorrento Pier</option><option value='portseapier'>Portsea Pier</option><option value='portseahole'>Portsea Hole</option><option value='popeseye'>Popes Eye</option><option value='chinamans'>Chinaman's Hat</option><option value='lonsdalewall'>Lonsdale Wall</option><option value='queenscliffpier'>Queenscliff Pier</option><option value='stleonards'>St Leonards Pier</option><option value='portarlington'>Portarlington Pier</option><option value='morningtonpier'>Mornington Pier</option><option value='ricketts'>Ricketts Point</option><option value='cerberus'>HMVS Cerberus (Black Rock)</option><option value='williamstown'>Williamstown (The Dell)</option><option value='flinderspier'>Flinders Pier</option><option value='cowes'>Cowes Jetty</option><option value='stonypoint'>Stony Point Pier</option><option value='crawfish'>Crawfish Rock</option><option value='rhyll'>Rhyll Jetty</option><option value='newhaven'>Newhaven Pier (San Remo)</option><option value='tortoise'>Tortoise Head (French Is.)</option><option value='corinella'>Corinella Pier</option></datalist>"
-  "<div style='font-size:12px;color:#555;margin:-8px 0 10px'>"
-  "Start typing to search 77 spots. An id the site doesn't know falls back to Diamond Bay."
-  "</div>";
+// The spot menu. WiFiManager only renders <input>, so the real control is this
+// raw-HTML block and the saved field is a hidden input it writes into; the
+// script seeds the menu from whatever is stored. With JS off nothing moves and
+// the stored spot survives, which is the safe failure.
+static const char SPOT_PICKER[] =
+  "<label for='spotsel' style='display:block;margin-bottom:4px'><b>Dive spot</b></label>"
+  "<select id='spotsel' onchange=\"document.getElementById('spot').value=this.value\">"
+  "<optgroup label='Surf Coast'><option value='bells'>Bells Beach</option><option value='winki'>Winkipop</option><option value='janjuc'>Jan Juc</option><option value='torquay'>Torquay Point</option><option value='roadknight'>Point Roadknight</option><option value='anglesea'>Anglesea</option><option value='lorne'>Lorne</option><option value='apollo'>Apollo Bay</option></optgroup><optgroup label='Bellarine'><option value='13th'>13th Beach</option><option value='barwon'>Barwon Heads</option><option value='oceangrove'>Ocean Grove</option><option value='lonsdale'>Point Lonsdale</option></optgroup><optgroup label='Mornington Peninsula'><option value='pointnepean'>Point Nepean (buoy)</option><option value='portsea'>Portsea Back Beach</option><option value='diamond'>Diamond Bay</option><option value='sorrento'>Sorrento Back Beach</option><option value='rye'>Rye Back Beach</option><option value='gunnamatta'>Gunnamatta</option><option value='schanck'>Cape Schanck</option><option value='flinders'>Flinders</option><option value='pointleo'>Point Leo</option></optgroup><optgroup label='Phillip Island'><option value='woolamai'>Cape Woolamai</option><option value='smiths'>Smiths Beach</option><option value='surfbeach'>Surf Beach</option><option value='pyramid'>Pyramid Rock</option><option value='express'>Express Point</option><option value='summerland'>Summerland</option><option value='ycw'>YCW / Cat Bay</option></optgroup><optgroup label='East Coast / Gippsland'><option value='capepat'>Cape Paterson</option><option value='inverloch'>Inverloch</option><option value='venus'>Venus Bay</option><option value='waratah'>Waratah Bay</option><option value='sandypt'>Sandy Point</option><option value='walkerville'>Walkerville</option></optgroup><optgroup label='Wilsons Promontory'><option value='tonguept'>Tongue Point</option><option value='whiskybay'>Whisky Bay</option><option value='squeaky'>Squeaky Beach</option><option value='normanbay'>Norman Bay (Tidal River)</option><option value='shellback'>Shellback Island</option><option value='oberon'>Oberon Bay</option><option value='glennie'>Great Glennie Island</option><option value='cleft'>Cleft Island (Skull Rock)</option><option value='anser'>Anser Island</option><option value='kanowna'>Kanowna Island</option><option value='rodondo'>Rodondo Island</option><option value='waterloobay'>Waterloo Bay</option><option value='refugecove'>Refuge Cove</option><option value='sealerscove'>Sealers Cove</option></optgroup><optgroup label='Far West / Shipwreck Coast'><option value='portcampbell'>Port Campbell</option><option value='princetown'>Princetown</option><option value='warrnambool'>Warrnambool (Logans)</option><option value='portfairy'>Port Fairy</option><option value='portland'>Portland</option></optgroup><optgroup label='Port Phillip'><option value='fort'>South Channel Fort</option><option value='blairgowrie'>Blairgowrie (bay)</option><option value='ryepier'>Rye Pier</option><option value='sorrentopier'>Sorrento Pier</option><option value='portseapier'>Portsea Pier</option><option value='portseahole'>Portsea Hole</option><option value='popeseye'>Popes Eye</option><option value='chinamans'>Chinaman's Hat</option><option value='lonsdalewall'>Lonsdale Wall</option><option value='queenscliffpier'>Queenscliff Pier</option><option value='stleonards'>St Leonards Pier</option><option value='portarlington'>Portarlington Pier</option><option value='morningtonpier'>Mornington Pier</option><option value='ricketts'>Ricketts Point</option><option value='cerberus'>HMVS Cerberus (Black Rock)</option><option value='williamstown'>Williamstown (The Dell)</option></optgroup><optgroup label='Western Port'><option value='flinderspier'>Flinders Pier</option><option value='cowes'>Cowes Jetty</option><option value='stonypoint'>Stony Point Pier</option><option value='crawfish'>Crawfish Rock</option><option value='rhyll'>Rhyll Jetty</option><option value='newhaven'>Newhaven Pier (San Remo)</option><option value='tortoise'>Tortoise Head (French Is.)</option><option value='corinella'>Corinella Pier</option></optgroup>"
+  "</select>"
+  // Seed on DOM ready, not inline: the hidden input renders after this block, so
+  // seeding at parse time finds nothing and the menu opens on the first spot.
+  "<script>document.addEventListener('DOMContentLoaded',function(){"
+  "var h=document.getElementById('spot'),s=document.getElementById('spotsel');"
+  "if(h&&s)s.value=h.value;});</script>";
 
+// Portal styling. Injected after WiFiManager's own <style> (WiFiManager.cpp:1281),
+// so these win. Palette is OVERWORLD from the site's app/overworld.css; the fonts
+// are its system fallbacks, because the portal serves an AP with no internet and
+// no webfont can load. Button labels are rewritten here rather than in the
+// library — that ties them to WiFiManager 2.0.17's markup (wm_strings_en.h:45),
+// and a markup change blanks them rather than making them wrong.
+static const char PORTAL_CSS[] =
+  "<style>"
+  "body{background:#F2EAD6;color:#161310;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:16px}"
+  ".wrap{width:100%;max-width:520px;padding:0 16px;box-sizing:border-box}"
+  "h1{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.04em;font-size:1.6rem;margin:18px 0 2px}"
+  ".wrap>h3{color:#3A332A;font-weight:400;font-size:1rem;margin:0 0 18px}"
+  "button,input[type='submit']{background:#2E5DD6;color:#FFFAEF;border:2px solid #161310;border-radius:0;"
+  "box-shadow:4px 4px 0 #161310;min-height:48px;font-weight:700;font-size:1.1rem;line-height:1.3}"
+  "button:active,input[type='submit']:active{transform:translate(2px,2px);box-shadow:2px 2px 0 #161310;opacity:1 !important}"
+  "input,select{background:#FFFAEF;color:#161310;border:2px solid #161310;border-radius:0;min-height:44px;font-size:16px;width:100%}"
+  "select{padding-right:28px}"
+  "input:focus-visible,select:focus-visible,button:focus-visible{outline:0;box-shadow:0 0 0 3px #2E5DD6}"
+  ".msg{background:#FFFAEF;border:2px solid #161310;border-left-width:5px;border-left-color:#2E5DD6;border-radius:0}"
+  "a{color:#161310}a:hover{color:#2E5DD6}"
+  // plain-language menu labels; see the note above
+  "form[action='/wifi'] button,form[action='/param'] button,form[action='/exit'] button{font-size:0}"
+  "form[action='/wifi'] button::after{content:'Choose your WiFi network';font-size:1.1rem}"
+  "form[action='/param'] button::after{content:'Choose your dive spot';font-size:1.1rem}"
+  "form[action='/exit'] button::after{content:'Done';font-size:1.1rem}"
+  "</style>";
 
 Preferences prefs;
 String spotId   = "diamond"; // slug the API knows; unknown ones fall back to Diamond Bay
@@ -146,22 +181,22 @@ void setup() {
   prefs.begin("gsv", false);
   spotId = prefs.getString("spot", spotId);
 
-  // The 5th argument lands inside the <input> tag, which is how the field gets
-  // its datalist without WiFiManager knowing anything about it.
-  WiFiManagerParameter spotParam("spot", "Dive spot", spotId.c_str(), 24,
-                                 "list='spots' placeholder='diamond'");
+  // The 5th argument lands inside the <input> tag: the saved field is hidden and
+  // the <select> in SPOT_PICKER writes into it.
+  WiFiManagerParameter spotParam("spot", "", spotId.c_str(), 24, "type='hidden'");
   WiFiManagerParameter introBlock(PORTAL_INTRO);
-  WiFiManagerParameter spotList(SPOT_DATALIST);
+  WiFiManagerParameter spotPicker(SPOT_PICKER);
 
   WiFiManager wm;
   wm.setTitle("Gimmie Sick Vis");
+  wm.setCustomHeadElement(PORTAL_CSS);
   wm.addParameter(&introBlock); // first, so it renders above the fields
+  wm.addParameter(&spotPicker); // the menu, then the hidden field it feeds
   wm.addParameter(&spotParam);
-  wm.addParameter(&spotList);
   wm.setConfigPortalTimeout(PORTAL_TIMEOUT_S);
   // "Setup" (/param) lets someone change the spot alone — the WiFi page would
   // make them retype the network password just to move the display.
-  std::vector<const char*> menu = {"wifi", "param", "info", "sep", "restart", "exit"};
+  std::vector<const char*> menu = {"wifi", "param", "sep", "exit"};
   wm.setMenu(menu); // takes a non-const reference, so it needs a named vector
   // Save on the portal's Save button, not on a clean exit: a customer who
   // changes the spot and wanders off would otherwise lose it to the timeout.
