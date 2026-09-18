@@ -20,7 +20,6 @@
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
 #include <WiFi.h>
-#include <driver/rtc_io.h>
 #include <WiFiManager.h>
 #include <Preferences.h>
 #include <HTTPClient.h>
@@ -69,8 +68,8 @@ static const char PORTAL_INTRO[] =
   "<p style='margin:0 0 8px'><b>To set it up:</b> tap <i>Choose your WiFi network</i>, pick "
   "yours and enter its password. Then tap <i>Choose your dive spot</i>, pick a beach from the "
   "menu and press <i>Save</i>. The panel redraws within a minute.</p>"
-  "<p style='margin:0'><b>To change it later:</b> press the BOOT button on the back while the "
-  "panel is idle, then rejoin this network.</p>"
+  "<p style='margin:0'><b>To change it later:</b> press the EN button on the back twice — "
+  "once to restart it, again a couple of seconds later — then rejoin this network.</p>"
   "</div>";
 
 // The spot menu. WiFiManager only renders <input>, so the real control is this
@@ -119,14 +118,13 @@ Preferences prefs;
 String spotId   = "diamond"; // slug the API knows; unknown ones fall back to Diamond Bay
 String spotName = "";        // display name, straight from the API response
 
-// The portal opens on its own when WiFi won't connect. To change spot or
-// network on a working unit, press BOOT while the panel is asleep: GPIO0 is
-// RTC-capable, so the press itself wakes the chip and we open the portal
-// instead of fetching.
-// (Holding BOOT during an EN reset is a different thing entirely — that's the
-// serial bootloader, and the sketch never runs. An EN reset also can't carry a
-// flag in RTC memory: the RTC domain powers down with the chip.)
-const gpio_num_t PORTAL_BUTTON = GPIO_NUM_0; // BOOT, beside EN
+// The portal opens on its own when WiFi won't connect. To reach it on a working
+// unit: press EN (reset) twice — once to restart it, again while it's awake.
+// The flag lives in NVS, not RTC memory: EN cuts power to the RTC domain, so
+// anything kept there reads back empty and the second press looks like the first.
+// GPIO0/BOOT can't do this either, as a wake on it boots with the pin still low,
+// which is the ESP32's serial-bootloader strap.
+const char* PORTAL_FLAG = "portalpend";
 const int PORTAL_TIMEOUT_S = 180;         // don't hold a battery unit open forever
 
 const uint64_t SLEEP_SECONDS = 3600;
@@ -171,15 +169,17 @@ void setup() {
 
   display.init(115200);
 
-  // Woken by the button, or it's held down during a normal wake.
-  pinMode(PORTAL_BUTTON, INPUT_PULLUP);
-  bool portalRequested = (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0)
-                         || (digitalRead(PORTAL_BUTTON) == LOW);
-  Serial.print("portal requested: ");
-  Serial.println(portalRequested ? "yes" : "no");
-
   prefs.begin("gsv", false);
   spotId = prefs.getString("spot", spotId);
+
+  // Set on every boot, cleared once a run finishes. Still set = the last boot
+  // never reached sleep, i.e. EN was pressed again mid-run.
+  bool portalRequested = prefs.getBool(PORTAL_FLAG, false);
+  prefs.putBool(PORTAL_FLAG, true);
+  Serial.print("wake cause: ");
+  Serial.print(esp_sleep_get_wakeup_cause());
+  Serial.print("  portal requested: ");
+  Serial.println(portalRequested ? "yes" : "no");
 
   // The 5th argument lands inside the <input> tag: the saved field is hidden and
   // the <select> in SPOT_PICKER writes into it.
@@ -219,7 +219,7 @@ void setup() {
   }
 
   if (!connected) {
-    drawError("No WiFi - press BOOT to set up");
+    drawError("No WiFi - press EN twice to set up");
     goToSleep();
     return;
   }
@@ -513,7 +513,7 @@ void drawSetupScreen() {
   const char* steps[] = {
     "1.  On a phone or laptop, join the WiFi network:  GimmieSickVis",
     "2.  A setup page opens by itself. If it doesn't, browse to  192.168.4.1",
-    "3.  Tap 'Configure WiFi' for the network, or 'Setup' to change the dive spot.",
+    "3.  Tap 'Choose your WiFi network', or 'Choose your dive spot' to move it.",
     "4.  Press Save. This panel redraws within a minute, then updates hourly.",
   };
 
@@ -546,7 +546,7 @@ void drawSetupScreen() {
     int contentBottom = PANEL_H - FOOTER_H;
     display.drawLine(0, contentBottom, PANEL_W, contentBottom, GxEPD_BLACK);
     display.setCursor(15, PANEL_H - 5);
-    display.print("This page closes after 3 minutes. Press BOOT to reopen it.");
+    display.print("This page closes after 3 minutes. Press EN twice to reopen it.");
 
     int16_t bx, by; uint16_t bw, bh;
     display.getTextBounds(brandText, 0, 0, &bx, &by, &bw, &bh);
@@ -571,10 +571,8 @@ void drawError(const char* msg) {
 }
 
 void goToSleep() {
-  // BOOT (active low) wakes it early, straight into the setup portal.
-  rtc_gpio_pullup_en(PORTAL_BUTTON);
-  rtc_gpio_pulldown_dis(PORTAL_BUTTON);
-  esp_sleep_enable_ext0_wakeup(PORTAL_BUTTON, 0);
+  // A completed run means the next boot isn't a double-press.
+  prefs.putBool(PORTAL_FLAG, false);
   esp_sleep_enable_timer_wakeup(SLEEP_SECONDS * 1000000ULL);
   esp_deep_sleep_start();
 }
