@@ -47,6 +47,9 @@ GxEPD2_BW<GxEPD2_750_T7, GxEPD2_750_T7::HEIGHT> display(
 // nothing to hardcode, nothing to reflash when a customer moves the display.
 const char* relayBaseUrl = "https://gimmiesickvis.com/api/eink-forecast";
 const char* ntpServer    = "pool.ntp.org";
+const char* ntpServer2    = "time.google.com";   // pool.ntp.org needs DNS; these are backups
+const char* ntpServer3    = "time.cloudflare.com";
+const int NTP_TIMEOUT_MS  = 30000;               // first sync after a cold boot can be slow
 const char* tzMelbourne  = "AEST-10AEDT,M10.1.0,M4.1.0/3";
 const char* portalName   = "GimmieSickVis";
 const char* brandText    = "gimmiesickvis.com";
@@ -152,13 +155,21 @@ void setup() {
 
   saveSpot(spotParam.getValue());
 
-  configTzTime(tzMelbourne, ntpServer);
+  // The portal leaves the radio in AP+STA. SNTP can pick the AP interface and
+  // never hear a reply, so drop back to station-only before asking for time.
+  WiFi.mode(WIFI_STA);
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
+
+  configTzTime(tzMelbourne, ntpServer, ntpServer2, ntpServer3);
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo, 10000)) {
-    drawError("No time sync");
+  if (!getLocalTime(&timeinfo, NTP_TIMEOUT_MS)) {
+    Serial.println("NTP failed - no reply on UDP 123 within timeout");
+    drawError("No time sync - check the router allows NTP");
     goToSleep();
     return;
   }
+  Serial.println(&timeinfo, "time: %Y-%m-%d %H:%M:%S");
 
   buildWeekStructure(timeinfo);
 
