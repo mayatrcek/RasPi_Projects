@@ -20,6 +20,7 @@
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
 #include <WiFi.h>
+#include <driver/rtc_io.h>
 #include <WiFiManager.h>
 #include <Preferences.h>
 #include <HTTPClient.h>
@@ -59,14 +60,13 @@ String spotId   = "diamond"; // slug the API knows; unknown ones fall back to Di
 String spotName = "";        // display name, straight from the API response
 
 // The portal opens on its own when WiFi won't connect. To change spot or
-// network on a unit that IS connecting, press EN twice (the reset button on
-// the Waveshare board is labelled EN, beside BOOT): the first press restarts
-// it, the second lands while this flag is still set. A power cycle won't do —
-// cutting power clears RTC memory along with this flag.
-// (GPIO0 can't do this — held low at reset the ESP32 enters its serial
-// bootloader and never runs the sketch.)
-RTC_DATA_ATTR uint32_t portalFlag;
-const uint32_t PORTAL_MAGIC = 0x50525450; // "PRTP"
+// network on a working unit, press BOOT while the panel is asleep: GPIO0 is
+// RTC-capable, so the press itself wakes the chip and we open the portal
+// instead of fetching.
+// (Holding BOOT during an EN reset is a different thing entirely — that's the
+// serial bootloader, and the sketch never runs. An EN reset also can't carry a
+// flag in RTC memory: the RTC domain powers down with the chip.)
+const gpio_num_t PORTAL_BUTTON = GPIO_NUM_0; // BOOT, beside EN
 const int PORTAL_TIMEOUT_S = 180;         // don't hold a battery unit open forever
 
 const uint64_t SLEEP_SECONDS = 3600;
@@ -111,8 +111,12 @@ void setup() {
 
   display.init(115200);
 
-  bool portalRequested = (portalFlag == PORTAL_MAGIC);
-  portalFlag = PORTAL_MAGIC; // goToSleep() clears it once a run completes
+  // Woken by the button, or it's held down during a normal wake.
+  pinMode(PORTAL_BUTTON, INPUT_PULLUP);
+  bool portalRequested = (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0)
+                         || (digitalRead(PORTAL_BUTTON) == LOW);
+  Serial.print("portal requested: ");
+  Serial.println(portalRequested ? "yes" : "no");
 
   prefs.begin("gsv", false);
   spotId = prefs.getString("spot", spotId);
@@ -148,7 +152,7 @@ void setup() {
   }
 
   if (!connected) {
-    drawError("No WiFi - press EN twice to set up");
+    drawError("No WiFi - press BOOT to set up");
     goToSleep();
     return;
   }
@@ -451,7 +455,10 @@ void drawError(const char* msg) {
 }
 
 void goToSleep() {
-  portalFlag = 0; // a completed run means the next boot isn't a double-reset
+  // BOOT (active low) wakes it early, straight into the setup portal.
+  rtc_gpio_pullup_en(PORTAL_BUTTON);
+  rtc_gpio_pulldown_dis(PORTAL_BUTTON);
+  esp_sleep_enable_ext0_wakeup(PORTAL_BUTTON, 0);
   esp_sleep_enable_timer_wakeup(SLEEP_SECONDS * 1000000ULL);
   esp_deep_sleep_start();
 }
