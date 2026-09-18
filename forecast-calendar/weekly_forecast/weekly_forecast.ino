@@ -55,6 +55,31 @@ const char* tzMelbourne  = "AEST-10AEDT,M10.1.0,M4.1.0/3";
 const char* portalName   = "GimmieSickVis";
 const char* brandText    = "gimmiesickvis.com";
 
+// ---- Setup portal copy ----
+// The portal runs in AP mode with no internet, so the spot list has to ship in
+// the firmware. Source of truth is lib/data/regions.ts in gimmie-SICK-vis-vic;
+// regenerate it from that file's `id`/`name` pairs as <option> tags (see
+// the plan notes, or just grep regions.ts) when the site gains a spot.
+// Drift is harmless: the API validates the id and falls back to Diamond Bay.
+static const char PORTAL_INTRO[] =
+  "<div style='padding:10px;border:1px solid #ccc;border-radius:5px;margin-bottom:10px'>"
+  "<h3 style='margin:0 0 8px'>Dive forecast display</h3>"
+  "<p style='margin:0 0 8px'>This panel shows 7 days of dive conditions for one spot "
+  "on the Victorian coast, and refreshes itself every hour.</p>"
+  "<p style='margin:0 0 8px'><b>To set it up:</b> tap <i>Configure WiFi</i>, pick your "
+  "network and enter its password. Set <i>Dive spot</i> to the beach you want, then press "
+  "<i>Save</i>. The panel redraws within a minute.</p>"
+  "<p style='margin:0'><b>To change the spot later:</b> press the BOOT button on the back "
+  "while the panel is idle, rejoin this network, and use <i>Setup</i>.</p>"
+  "</div>";
+
+static const char SPOT_DATALIST[] =
+  "<datalist id='spots'><option value='bells'>Bells Beach</option><option value='winki'>Winkipop</option><option value='janjuc'>Jan Juc</option><option value='torquay'>Torquay Point</option><option value='roadknight'>Point Roadknight</option><option value='anglesea'>Anglesea</option><option value='lorne'>Lorne</option><option value='apollo'>Apollo Bay</option><option value='13th'>13th Beach</option><option value='barwon'>Barwon Heads</option><option value='oceangrove'>Ocean Grove</option><option value='lonsdale'>Point Lonsdale</option><option value='pointnepean'>Point Nepean (buoy)</option><option value='portsea'>Portsea Back Beach</option><option value='diamond'>Diamond Bay</option><option value='sorrento'>Sorrento Back Beach</option><option value='rye'>Rye Back Beach</option><option value='gunnamatta'>Gunnamatta</option><option value='schanck'>Cape Schanck</option><option value='flinders'>Flinders</option><option value='pointleo'>Point Leo</option><option value='woolamai'>Cape Woolamai</option><option value='smiths'>Smiths Beach</option><option value='surfbeach'>Surf Beach</option><option value='pyramid'>Pyramid Rock</option><option value='express'>Express Point</option><option value='summerland'>Summerland</option><option value='ycw'>YCW / Cat Bay</option><option value='capepat'>Cape Paterson</option><option value='inverloch'>Inverloch</option><option value='venus'>Venus Bay</option><option value='waratah'>Waratah Bay</option><option value='sandypt'>Sandy Point</option><option value='walkerville'>Walkerville</option><option value='tonguept'>Tongue Point</option><option value='whiskybay'>Whisky Bay</option><option value='squeaky'>Squeaky Beach</option><option value='normanbay'>Norman Bay (Tidal River)</option><option value='shellback'>Shellback Island</option><option value='oberon'>Oberon Bay</option><option value='glennie'>Great Glennie Island</option><option value='cleft'>Cleft Island (Skull Rock)</option><option value='anser'>Anser Island</option><option value='kanowna'>Kanowna Island</option><option value='rodondo'>Rodondo Island</option><option value='waterloobay'>Waterloo Bay</option><option value='refugecove'>Refuge Cove</option><option value='sealerscove'>Sealers Cove</option><option value='portcampbell'>Port Campbell</option><option value='princetown'>Princetown</option><option value='warrnambool'>Warrnambool (Logans)</option><option value='portfairy'>Port Fairy</option><option value='portland'>Portland</option><option value='fort'>South Channel Fort</option><option value='blairgowrie'>Blairgowrie (bay)</option><option value='ryepier'>Rye Pier</option><option value='sorrentopier'>Sorrento Pier</option><option value='portseapier'>Portsea Pier</option><option value='portseahole'>Portsea Hole</option><option value='popeseye'>Popes Eye</option><option value='chinamans'>Chinaman's Hat</option><option value='lonsdalewall'>Lonsdale Wall</option><option value='queenscliffpier'>Queenscliff Pier</option><option value='stleonards'>St Leonards Pier</option><option value='portarlington'>Portarlington Pier</option><option value='morningtonpier'>Mornington Pier</option><option value='ricketts'>Ricketts Point</option><option value='cerberus'>HMVS Cerberus (Black Rock)</option><option value='williamstown'>Williamstown (The Dell)</option><option value='flinderspier'>Flinders Pier</option><option value='cowes'>Cowes Jetty</option><option value='stonypoint'>Stony Point Pier</option><option value='crawfish'>Crawfish Rock</option><option value='rhyll'>Rhyll Jetty</option><option value='newhaven'>Newhaven Pier (San Remo)</option><option value='tortoise'>Tortoise Head (French Is.)</option><option value='corinella'>Corinella Pier</option></datalist>"
+  "<div style='font-size:12px;color:#555;margin:-8px 0 10px'>"
+  "Start typing to search 77 spots. An id the site doesn't know falls back to Diamond Bay."
+  "</div>";
+
+
 Preferences prefs;
 String spotId   = "diamond"; // slug the API knows; unknown ones fall back to Diamond Bay
 String spotName = "";        // display name, straight from the API response
@@ -121,9 +146,18 @@ void setup() {
   prefs.begin("gsv", false);
   spotId = prefs.getString("spot", spotId);
 
-  WiFiManagerParameter spotParam("spot", "Dive spot id", spotId.c_str(), 24);
+  // The 5th argument lands inside the <input> tag, which is how the field gets
+  // its datalist without WiFiManager knowing anything about it.
+  WiFiManagerParameter spotParam("spot", "Dive spot", spotId.c_str(), 24,
+                                 "list='spots' placeholder='diamond'");
+  WiFiManagerParameter introBlock(PORTAL_INTRO);
+  WiFiManagerParameter spotList(SPOT_DATALIST);
+
   WiFiManager wm;
+  wm.setTitle("Gimmie Sick Vis");
+  wm.addParameter(&introBlock); // first, so it renders above the fields
   wm.addParameter(&spotParam);
+  wm.addParameter(&spotList);
   wm.setConfigPortalTimeout(PORTAL_TIMEOUT_S);
   // "Setup" (/param) lets someone change the spot alone — the WiFi page would
   // make them retype the network password just to move the display.
@@ -132,9 +166,7 @@ void setup() {
   // Save on the portal's Save button, not on a clean exit: a customer who
   // changes the spot and wanders off would otherwise lose it to the timeout.
   wm.setSaveParamsCallback([&spotParam]() { saveSpot(spotParam.getValue()); });
-  wm.setAPCallback([](WiFiManager *) {
-    drawError("SETUP: join WiFi network GimmieSickVis");
-  });
+  wm.setAPCallback([](WiFiManager *) { drawSetupScreen(); });
 
   bool connected = portalRequested ? wm.startConfigPortal(portalName)
                                    : wm.autoConnect(portalName);
@@ -436,6 +468,55 @@ void drawWeek(struct tm &timeinfo) {
     display.setCursor(PANEL_W - bw - 15, PANEL_H - 5);
     display.print(brandText);
 
+  } while (display.nextPage());
+
+  display.powerOff();
+}
+
+// Shown while the setup portal is open. drawError() stays the one-line path.
+void drawSetupScreen() {
+  const char* steps[] = {
+    "1.  On a phone or laptop, join the WiFi network:  GimmieSickVis",
+    "2.  A setup page opens by itself. If it doesn't, browse to  192.168.4.1",
+    "3.  Tap 'Configure WiFi' for the network, or 'Setup' to change the dive spot.",
+    "4.  Press Save. This panel redraws within a minute, then updates hourly.",
+  };
+
+  display.setFullWindow();
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+
+    display.setFont(&FreeSansBold12pt7b);
+    display.setTextColor(GxEPD_BLACK);
+    display.setCursor(15, 35);
+    display.print("DISPLAY SETUP");
+    display.drawLine(0, TITLE_H, PANEL_W, TITLE_H, GxEPD_BLACK);
+
+    display.setFont(&FreeSans9pt7b);
+    display.setCursor(15, TITLE_H + 40);
+    display.print("This display needs a WiFi network and a dive spot before it can show a forecast.");
+
+    int y = TITLE_H + 90;
+    for (int i = 0; i < 4; i++) {
+      display.setCursor(30, y);
+      display.print(steps[i]);
+      y += 34;
+    }
+
+    display.setCursor(15, y + 20);
+    display.print("Showing: ");
+    display.print(spotName.length() ? spotName : spotId);
+
+    int contentBottom = PANEL_H - FOOTER_H;
+    display.drawLine(0, contentBottom, PANEL_W, contentBottom, GxEPD_BLACK);
+    display.setCursor(15, PANEL_H - 5);
+    display.print("This page closes after 3 minutes. Press BOOT to reopen it.");
+
+    int16_t bx, by; uint16_t bw, bh;
+    display.getTextBounds(brandText, 0, 0, &bx, &by, &bw, &bh);
+    display.setCursor(PANEL_W - bw - 15, PANEL_H - 5);
+    display.print(brandText);
   } while (display.nextPage());
 
   display.powerOff();
