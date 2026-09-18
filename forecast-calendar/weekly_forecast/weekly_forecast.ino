@@ -56,8 +56,10 @@ String spotId   = "diamond"; // slug the API knows; unknown ones fall back to Di
 String spotName = "";        // display name, straight from the API response
 
 // The portal opens on its own when WiFi won't connect. To change spot or
-// network on a unit that IS connecting, press RST twice: the first press
-// restarts it, the second lands while this flag is still set.
+// network on a unit that IS connecting, press EN twice (the reset button on
+// the Waveshare board is labelled EN, beside BOOT): the first press restarts
+// it, the second lands while this flag is still set. A power cycle won't do —
+// cutting power clears RTC memory along with this flag.
 // (GPIO0 can't do this — held low at reset the ESP32 enters its serial
 // bootloader and never runs the sketch.)
 RTC_DATA_ATTR uint32_t portalFlag;
@@ -143,7 +145,7 @@ void setup() {
   }
 
   if (!connected) {
-    drawError("No WiFi - press RST twice to set up");
+    drawError("No WiFi - press EN twice to set up");
     goToSleep();
     return;
   }
