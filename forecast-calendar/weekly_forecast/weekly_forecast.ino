@@ -116,23 +116,39 @@ void setup() {
   WiFiManager wm;
   wm.addParameter(&spotParam);
   wm.setConfigPortalTimeout(PORTAL_TIMEOUT_S);
+  // "Setup" (/param) lets someone change the spot alone — the WiFi page would
+  // make them retype the network password just to move the display.
+  std::vector<const char*> menu = {"wifi", "param", "info", "sep", "restart", "exit"};
+  wm.setMenu(menu); // takes a non-const reference, so it needs a named vector
+  // Save on the portal's Save button, not on a clean exit: a customer who
+  // changes the spot and wanders off would otherwise lose it to the timeout.
+  wm.setSaveParamsCallback([&spotParam]() { saveSpot(spotParam.getValue()); });
   wm.setAPCallback([](WiFiManager *) {
     drawError("SETUP: join WiFi network GimmieSickVis");
   });
 
   bool connected = portalRequested ? wm.startConfigPortal(portalName)
                                    : wm.autoConnect(portalName);
+
+  // Portal timed out. If credentials are already stored, that's a spot-only
+  // edit (or nobody touched it), so join with what's saved rather than
+  // burning an hour on an error screen.
+  if (!connected && WiFi.SSID().length() > 0) {
+    WiFi.begin();
+    unsigned long start = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
+      delay(250);
+    }
+    connected = (WiFi.status() == WL_CONNECTED);
+  }
+
   if (!connected) {
     drawError("No WiFi - press RST twice to set up");
     goToSleep();
     return;
   }
 
-  // Empty means the customer left the field alone, so keep what's saved.
-  if (strlen(spotParam.getValue()) > 0 && spotId != spotParam.getValue()) {
-    spotId = spotParam.getValue();
-    prefs.putString("spot", spotId);
-  }
+  saveSpot(spotParam.getValue());
 
   configTzTime(tzMelbourne, ntpServer);
   struct tm timeinfo;
@@ -154,6 +170,16 @@ void setup() {
 
   WiFi.disconnect(true);
   goToSleep();
+}
+
+// Persist a spot only when it's a real change — NVS writes are finite.
+void saveSpot(const char* value) {
+  if (value == nullptr || strlen(value) == 0) return; // field left blank: keep what's stored
+  if (spotId == value) return;
+  spotId = value;
+  prefs.putString("spot", spotId);
+  Serial.print("spot -> ");
+  Serial.println(spotId);
 }
 
 void loop() {
